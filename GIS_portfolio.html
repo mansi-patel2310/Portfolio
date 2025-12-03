@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geospatial Intelligence Portfolio</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Chosen Palette: Earth & Analytics
+         Backgrounds: Warm Stone/Sand (representing the arid study regions)
+         Text: Deep Slate
+         Accents: 
+            - Vegetation Green (Emerald)
+            - Urban Red/Orange (Rose/Orange)
+            - Water Blue (Sky)
+            - Analysis Purple (Indigo)
+    -->
+
+    <!-- Application Structure Plan:
+         Structure: "Mission Control" Dashboard.
+         Why: The report covers four distinct technical domains (LULC, Soil, Change Detection, Terrain). 
+         A linear scroll would bury the deep insights of the later projects. 
+         A tabbed/sidebar dashboard allows the user to jump between specific analytical contexts 
+         (e.g., "I want to see soil data" vs "I want to see vegetation trends") immediately.
+         
+         Views:
+         1. Overview: High-level summary of the portfolio's capability.
+         2. Land Cover Analysis (Project 1): Comparative charts for Bikaner vs Jodhpur, now with map visualization.
+         3. Soil Intelligence (Project 2): Interactive "Crop Suitability" filter based on soil types, now with map visualization.
+         4. Temporal Change (Project 3): Time-series visualization of Sikar City (2015-2024), now with map visualization.
+         5. Terrain Engineering (Project 4): Elevation profile simulation and risk assessment, now with map visualization.
+    -->
+
+    <!-- Visualization & Content Choices:
+         1. LULC: 
+            - Goal: Inform & Compare. 
+            - Viz: Doughnut Chart for composition + Dynamic Map Placeholder for spatial context.
+            - Interaction: Toggle between districts to animate charts and switch map image.
+         2. Soil: 
+            - Goal: Organize & Inform. 
+            - Viz: Map Placeholder for context + Interactive list for detail drill-down. 
+            - Interaction: Filter by "Agricultural Suitability".
+         3. NDVI: 
+            - Goal: Change & Trend. 
+            - Viz: Line Chart tracking trends + Map Placeholder for spatial context.
+            - Interaction: Year buttons (2015, 2020, 2024) to update textual insights.
+         4. Pipeline: 
+            - Goal: Relationships (Elevation vs Risk). 
+            - Viz: Filled Area Chart (Profile) + Map Placeholder (DEM).
+            - Interaction: Hovering highlights High Risk vs Low Risk zones.
+         
+         CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+    -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Chart Container Utilities */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Specific heights for different visualization types */
+        .chart-height-std {
+            height: 300px;
+            max-height: 350px;
+        }
+        
+        .chart-height-sm {
+            height: 250px;
+            max-height: 300px;
+        }
+
+        .chart-height-lg {
+            height: 400px;
+            max-height: 500px;
+        }
+
+        @media (min-width: 768px) {
+            .chart-height-std {
+                height: 350px;
+            }
+        }
+
+        /* Custom Scrollbar for side navigation if needed */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Navigation Sidebar -->
+    <nav class="w-full md:w-64 bg-stone-900 text-stone-200 flex-shrink-0 flex flex-col justify-between shadow-xl z-20">
+        <div class="p-6">
+            <h1 class="text-xl font-bold tracking-wider text-emerald-400 mb-1">GEO-ANALYTICS</h1>
+            <p class="text-xs text-stone-400 uppercase tracking-widest mb-8">Portfolio 2024</p>
+            
+            <div class="space-y-2" id="nav-container">
+                <button onclick="switchView('overview')" class="nav-btn w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3 bg-stone-800 text-white border-l-4 border-emerald-500" data-view="overview">
+                    <span>📊</span> Overview
+                </button>
+                <button onclick="switchView('lulc')" class="nav-btn w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3 hover:bg-stone-800 border-l-4 border-transparent hover:border-stone-600" data-view="lulc">
+                    <span>🌍</span> Land Use (LULC)
+                </button>
+                <button onclick="switchView('soil')" class="nav-btn w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3 hover:bg-stone-800 border-l-4 border-transparent hover:border-stone-600" data-view="soil">
+                    <span>🌱</span> Soil Mapping
+                </button>
+                <button onclick="switchView('ndvi')" class="nav-btn w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3 hover:bg-stone-800 border-l-4 border-transparent hover:border-stone-600" data-view="ndvi">
+                    <span>📈</span> Change (NDVI)
+                </button>
+                <button onclick="switchView('terrain')" class="nav-btn w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3 hover:bg-stone-800 border-l-4 border-transparent hover:border-stone-600" data-view="terrain">
+                    <span>🏔️</span> Infrastructure
+                </button>
+            </div>
+        </div>
+        
+        <div class="p-6 border-t border-stone-800 text-xs text-stone-500">
+            <p>Data Source: Satellite Imagery, Survey of India, DEM.</p>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto relative scroll-smooth bg-stone-50">
+        
+        <!-- View: Overview -->
+        <section id="view-overview" class="view-section min-h-full p-6 md:p-12 max-w-7xl mx-auto">
+            <div class="mb-10 border-b border-stone-200 pb-6">
+                <h2 class="text-3xl font-bold text-stone-900 mb-2">Geospatial Intelligence Summary</h2>
+                <p class="text-lg text-stone-600 max-w-3xl">
+                    This interactive portfolio demonstrates proficiency in advanced geospatial analysis techniques, 
+                    transforming raw satellite data into actionable intelligence for urban planning, agriculture, and infrastructure.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Project Card 1 -->
+                <div onclick="switchView('lulc')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer border border-stone-100 group">
+                    <div class="text-orange-500 text-3xl mb-4 group-hover:scale-110 transition-transform">🌍</div>
+                    <h3 class="font-bold text-lg mb-2">LULC Mapping</h3>
+                    <p class="text-sm text-stone-500">Bikaner & Jodhpur</p>
+                    <p class="text-sm mt-3 text-stone-600">Classification of urban vs. barren landscapes using HRSI 2024 data.</p>
+                </div>
+
+                <!-- Project Card 2 -->
+                <div onclick="switchView('soil')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer border border-stone-100 group">
+                    <div class="text-amber-600 text-3xl mb-4 group-hover:scale-110 transition-transform">🌱</div>
+                    <h3 class="font-bold text-lg mb-2">Thematic Soil Map</h3>
+                    <p class="text-sm text-stone-500">Pali District</p>
+                    <p class="text-sm mt-3 text-stone-600">Vector-based mapping for agricultural suitability modeling.</p>
+                </div>
+
+                <!-- Project Card 3 -->
+                <div onclick="switchView('ndvi')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer border border-stone-100 group">
+                    <div class="text-emerald-500 text-3xl mb-4 group-hover:scale-110 transition-transform">📈</div>
+                    <h3 class="font-bold text-lg mb-2">NDVI Change</h3>
+                    <p class="text-sm text-stone-500">Sikar City (2015-24)</p>
+                    <p class="text-sm mt-3 text-stone-600">Time-series analysis of vegetation health and urban encroachment.</p>
+                </div>
+
+                <!-- Project Card 4 -->
+                <div onclick="switchView('terrain')" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer border border-stone-100 group">
+                    <div class="text-blue-500 text-3xl mb-4 group-hover:scale-110 transition-transform">🏔️</div>
+                    <h3 class="font-bold text-lg mb-2">Terrain Analysis</h3>
+                    <p class="text-sm text-stone-500">Pipeline Corridor</p>
+                    <p class="text-sm mt-3 text-stone-600">DEM elevation profiling for risk mitigation and routing.</p>
+                </div>
+            </div>
+
+            <div class="mt-12 bg-white rounded-xl p-8 border border-stone-200">
+                <h3 class="text-xl font-bold mb-4">Core Competencies</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div class="p-3 bg-stone-50 rounded-lg">
+                        <span class="block font-bold text-stone-800">Remote Sensing</span>
+                        <span class="text-xs text-stone-500">Image Classification</span>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg">
+                        <span class="block font-bold text-stone-800">GIS Mapping</span>
+                        <span class="text-xs text-stone-500">Vector & Raster Analysis</span>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg">
+                        <span class="block font-bold text-stone-800">Time-Series</span>
+                        <span class="text-xs text-stone-500">Change Detection</span>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg">
+                        <span class="block font-bold text-stone-800">Terrain Modelling</span>
+                        <span class="text-xs text-stone-500">DEM & Slope Analysis</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- View: LULC -->
+        <section id="view-lulc" class="view-section hidden min-h-full p-6 md:p-12 max-w-7xl mx-auto">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-stone-900">Land Use & Land Cover (2024)</h2>
+                <p class="text-stone-600 mt-2 max-w-4xl">
+                    Analysis of Bikaner and Jodhpur districts using Supervised Classification. 
+                    This module visualizes the distribution of landscape categories to monitor urban expansion in arid environments, combining the analytical chart with the map output.
+                </p>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex gap-4 mb-6">
+                <button onclick="updateLulcData('bikaner')" id="btn-bikaner" class="px-6 py-2 rounded-full bg-stone-800 text-white shadow-md transition hover:bg-stone-700 font-medium">Bikaner District Map</button>
+                <button onclick="updateLulcData('jodhpur')" id="btn-jodhpur" class="px-6 py-2 rounded-full bg-white text-stone-600 border border-stone-200 shadow-sm transition hover:bg-stone-50 font-medium">Jodhpur District Map</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Main Chart -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                    <h3 class="font-bold text-stone-800 mb-4" id="lulc-chart-title">Composition: Bikaner</h3>
+                    <div class="chart-container chart-height-std">
+                        <canvas id="lulcPieChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Map Placeholder -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-stone-200 flex flex-col items-center justify-center">
+                    <h3 class="font-bold text-stone-800 mb-4" id="lulc-map-title">LULC Thematic Map: Bikaner (2024)</h3>
+                    <img id="lulc-map-placeholder" src="https://placehold.co/800x400/DCC7A4/333?text=Bikaner+LULC+Map+%282024%29" alt="Bikaner LULC Map Placeholder" class="w-full h-auto max-h-96 rounded-lg object-contain border border-stone-300">
+                    <p class="text-sm text-stone-500 mt-2">Thematic visualization of classification results.</p>
+                </div>
+            </div>
+
+            <!-- Insights Panel -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                <div class="bg-amber-50 p-6 rounded-xl border border-amber-100">
+                    <h4 class="font-bold text-amber-800 mb-2">Dominant Landscape</h4>
+                    <p class="text-sm text-stone-700" id="lulc-dominant-text">
+                        Barren land constitutes the highest proportion (<span class="font-bold">59%</span> in Bikaner), reflecting the Thar Desert influence.
+                    </p>
+                </div>
+                <div class="bg-rose-50 p-6 rounded-xl border border-rose-100">
+                    <h4 class="font-bold text-rose-800 mb-2">Urban Pressure</h4>
+                    <p class="text-sm text-stone-700" id="lulc-urban-text">
+                        Significant urban presence (<span class="font-bold">17%</span>) necessitates focused infrastructure planning to manage rapid growth in arid zones.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- View: Soil -->
+        <section id="view-soil" class="view-section hidden min-h-full p-6 md:p-12 max-w-7xl mx-auto">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-stone-900">Thematic Soil Mapping</h2>
+                <p class="text-stone-600 mt-2 max-w-4xl">
+                    Digital thematic mapping of Pali District soils. This tool aids in agricultural suitability modeling by identifying fertile zones versus areas requiring drought-resistant practices. The map visualizes the spatial distribution of these critical soil classes.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Interactive List -->
+                <div class="lg:col-span-4 space-y-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-200">
+                        <h3 class="font-bold text-stone-800 mb-3">Filter by Suitability</h3>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="filterSoil('all')" class="text-xs px-3 py-1 rounded bg-stone-800 text-white">All Types</button>
+                            <button onclick="filterSoil('fertile')" class="text-xs px-3 py-1 rounded bg-emerald-100 text-emerald-800 hover:bg-emerald-200">High Fertility</button>
+                            <button onclick="filterSoil('arid')" class="text-xs px-3 py-1 rounded bg-amber-100 text-amber-800 hover:bg-amber-200">Arid/Resistant</button>
+                        </div>
+                    </div>
+
+                    <div id="soil-list" class="space-y-3">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Soil Map Placeholder -->
+                <div class="lg:col-span-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <h3 class="font-bold text-stone-800 mb-4">Pali District Soil Classification Map</h3>
+                        <img src="https://placehold.co/1000x500/A0522D/F5F5DC?text=Pali+District+Soil+Map" alt="Pali District Soil Map Placeholder" class="w-full h-auto max-h-[500px] rounded-lg object-contain border border-stone-300">
+                        <p class="text-sm text-stone-500 mt-2">Source: Survey of India. Key soil types include Alluvial, Desert, and Brown.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detail View -->
+            <div class="mt-8">
+                <div class="bg-white p-8 rounded-xl shadow-sm border border-stone-200 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                        <span class="text-9xl">🌱</span>
+                    </div>
+                    
+                    <h3 class="text-2xl font-bold text-stone-900 mb-2" id="soil-detail-name">Select a Soil Type</h3>
+                    <div class="h-1 w-20 bg-stone-300 mb-6 rounded-full" id="soil-detail-bar"></div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="text-xs uppercase tracking-wide text-stone-400 font-bold mb-1">Characteristics</h4>
+                            <p class="text-stone-700" id="soil-detail-desc">Click on a soil type from the list to view its geological characteristics and distribution details within the Pali District.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xs uppercase tracking-wide text-stone-400 font-bold mb-1">Agricultural Impact</h4>
+                            <p class="text-stone-700" id="soil-detail-agri">Learn about crop suitability and water resource management recommendations.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 pt-8 border-t border-stone-100">
+                        <div class="bg-blue-50 p-4 rounded-lg inline-block">
+                            <span class="font-bold text-blue-800 text-sm">💧 Management Tip</span>
+                            <p class="text-blue-700 text-sm mt-1" id="soil-detail-tip">Detailed resource management advice will appear here.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- View: NDVI -->
+        <section id="view-ndvi" class="view-section hidden min-h-full p-6 md:p-12 max-w-7xl mx-auto">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-stone-900">Change Detection (2015-2024)</h2>
+                <p class="text-stone-600 mt-2 max-w-4xl">
+                    Time-series analysis of Sikar City using Normalized Difference Vegetation Index (NDVI). 
+                    The module combines the long-term trend chart with a spatial visualization of the change detection map for context.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Timeline Controls -->
+                <div class="lg:col-span-1 space-y-4">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <h3 class="font-bold text-stone-800 mb-4">Select Year</h3>
+                        <div class="space-y-2">
+                            <button onclick="updateNdviYear(2015)" id="btn-2015" class="w-full text-left px-4 py-3 rounded-lg border border-emerald-500 bg-emerald-50 text-emerald-900 font-bold shadow-sm transition">
+                                2015 <span class="float-right font-normal text-sm opacity-70">Baseline</span>
+                            </button>
+                            <button onclick="updateNdviYear(2020)" id="btn-2020" class="w-full text-left px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition">
+                                2020 <span class="float-right font-normal text-sm opacity-70">Mid-Term</span>
+                            </button>
+                            <button onclick="updateNdviYear(2024)" id="btn-2024" class="w-full text-left px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition">
+                                2024 <span class="float-right font-normal text-sm opacity-70">Current</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <h3 class="font-bold text-stone-800 mb-2">Observation</h3>
+                        <p class="text-sm text-stone-600 leading-relaxed" id="ndvi-observation">
+                            In 2015, the region established a baseline for vegetation health. 
+                            Early signs of urban spread were visible in the central districts.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Trend Chart & Map -->
+                <div class="lg:col-span-2">
+                    <!-- NDVI Map Time-Series Placeholder -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 mb-6">
+                        <h3 class="font-bold text-stone-800 mb-4">Sikar City NDVI Spatial Change</h3>
+                        <img id="ndvi-map-placeholder" src="https://placehold.co/800x200/90EE90/6A5ACD?text=NDVI+2015-2024+Time+Series" alt="NDVI 2015-2024 Time Series Map Placeholder" class="w-full h-auto max-h-56 rounded-lg object-contain border border-stone-300">
+                        <p class="text-sm text-stone-500 mt-2">Red to Green gradient shows vegetation health progression over time.</p>
+                    </div>
+                    
+                    <!-- Trend Chart -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold text-stone-800">Vegetation Health Trend</h3>
+                            <div class="flex items-center gap-4 text-xs">
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> Greening Efforts</span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-rose-500"></span> Urban Zones</span>
+                            </div>
+                        </div>
+                        <div class="chart-container chart-height-lg">
+                            <canvas id="ndviTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- View: Terrain -->
+        <section id="view-terrain" class="view-section hidden min-h-full p-6 md:p-12 max-w-7xl mx-auto">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-stone-900">Infrastructure Terrain Analysis</h2>
+                <p class="text-stone-600 mt-2 max-w-4xl">
+                    DEM-based elevation profiling for a pipeline corridor. 
+                    The module presents the cross-section elevation profile alongside the spatial DEM map to connect terrain risk (chart hover) with location (map).
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Elevation Profile Chart (Left) -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                    <h3 class="font-bold text-stone-800 mb-4">Corridor Elevation Profile</h3>
+                    <div class="chart-container" style="height: 400px; max-height: 450px;">
+                        <canvas id="terrainChart"></canvas>
+                    </div>
+                    <div class="text-xs text-stone-500 bg-stone-100 px-3 py-1 rounded-full mt-4 text-center">
+                        Hover over chart to see Risk Assessment
+                    </div>
+                </div>
+
+                <!-- DEM Map Placeholder (Right) -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 flex flex-col items-center justify-center">
+                    <h3 class="font-bold text-stone-800 mb-4">Pipeline Corridor Digital Elevation Model (DEM)</h3>
+                    <img src="https://placehold.co/800x400/FF0000/0000FF?text=Pipeline+Corridor+DEM+(Red=High,+Blue=Low)" alt="Pipeline DEM Map Placeholder" class="w-full h-auto max-h-96 rounded-lg object-contain border border-stone-300">
+                    <p class="text-sm text-stone-500 mt-2">Visualization of the terrain along the marked pipeline route.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-rose-50 p-6 rounded-xl border border-rose-100 flex items-start gap-4">
+                    <div class="bg-rose-100 p-3 rounded-full text-rose-600 text-xl font-bold">⚠️</div>
+                    <div>
+                        <h4 class="font-bold text-rose-900 mb-1">High Elevation Risks</h4>
+                        <p class="text-sm text-rose-800 opacity-80 mb-2">Peaks & Ridges</p>
+                        <ul class="text-sm text-rose-900 list-disc ml-4 space-y-1">
+                            <li>Requires extensive excavation/cutting.</li>
+                            <li>Prone to rockfall and slope instability.</li>
+                            <li>Higher construction costs.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 p-6 rounded-xl border border-blue-100 flex items-start gap-4">
+                    <div class="bg-blue-100 p-3 rounded-full text-blue-600 text-xl font-bold">💧</div>
+                    <div>
+                        <h4 class="font-bold text-blue-900 mb-1">Low Elevation Risks</h4>
+                        <p class="text-sm text-blue-800 opacity-80 mb-2">Valleys & Depressions</p>
+                        <ul class="text-sm text-blue-900 list-disc ml-4 space-y-1">
+                            <li>Potential flood plains.</li>
+                            <li>Drainage management required.</li>
+                            <li>Soil saturation issues.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- DATA STORE ---
+        const appData = {
+            lulc: {
+                bikaner: {
+                    data: [59, 17, 9, 6, 9], // Barren, Urban, Veg, Desert, Other(Calc)
+                    labels: ['Barren', 'Urban', 'Vegetation', 'Desert', 'Other'],
+                    dominant: "Barren land (59%) dominates the landscape.",
+                    urban: "Urban areas (17%) are expanding rapidly."
+                },
+                jodhpur: {
+                    data: [56, 18, 24, 1, 1], // Barren, Urban, Veg, Desert, Other
+                    labels: ['Barren', 'Urban', 'Vegetation', 'Desert', 'Other'],
+                    dominant: "Barren land (56%) is prevalent, but vegetation is higher.",
+                    urban: "Urban areas (18%) show significant density."
+                }
+            },
+            soil: [
+                { id: 'alluvial', name: 'Alluvial Soil', type: 'fertile', desc: 'Highly fertile soil deposited by surface water. Rich in nutrients.', agri: 'Suitable for intensive cultivation of wheat, mustard, and vegetables.', tip: 'Optimize irrigation to maximize high yield potential.' },
+                { id: 'brown', name: 'Brown Soil', type: 'fertile', desc: 'Transitional soil type, generally possessing moderate fertility.', agri: 'Supports hardy crops like millets and pulses.', tip: 'Requires nitrogen supplementation for best results.' },
+                { id: 'desert', name: 'Desert Soil', type: 'arid', desc: 'Sandy texture with low moisture retention and low organic matter.', agri: 'Suitable for drought-resistant crops (Bajra, Guar).', tip: 'Drip irrigation is essential to conserve scarce water.' },
+                { id: 'dunes', name: 'Dunes & Associate', type: 'arid', desc: 'Shifting sand dunes with very poor structural stability.', agri: 'Limited agricultural value; mainly used for grazing.', tip: 'Focus on sand dune stabilization and afforestation.' },
+                { id: 'hill', name: 'Hill Soil', type: 'arid', desc: 'Thin soil layer on rocky terrain with high runoff rates.', agri: 'Not suitable for traditional farming.', tip: 'Best used for forestry or controlled grazing to prevent erosion.' }
+            ],
+            ndvi: {
+                2015: "Baseline year. Vegetation is concentrated in the periphery. Urban core is distinct but contained.",
+                2020: "Mid-term analysis shows expansion of low-NDVI (pink) zones, indicating urban encroachment into previously vegetated areas.",
+                2024: "Recent data highlights success in specific 'Greening Efforts' (high NDVI), despite continued urban growth."
+            }
+        };
+
+        // --- STATE MANAGEMENT ---
+        let charts = {};
+        let currentLulcDistrict = 'bikaner';
+
+        // --- NAVIGATION LOGIC ---
+        function switchView(viewId) {
+            // Update Sidebar UI
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if(btn.dataset.view === viewId) {
+                    btn.classList.remove('border-transparent', 'hover:bg-stone-800', 'text-stone-200');
+                    btn.classList.add('bg-stone-800', 'text-white', 'border-emerald-500');
+                } else {
+                    btn.classList.add('border-transparent', 'hover:bg-stone-800', 'text-stone-200');
+                    btn.classList.remove('bg-stone-800', 'text-white', 'border-emerald-500');
+                }
+            });
+
+            // Update Main Content
+            document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+
+            // Trigger Chart Resizes/Updates if needed
+            if(viewId === 'lulc' && !charts.lulcPie) initLulcCharts();
+            if(viewId === 'ndvi' && !charts.ndviTrend) initNdviChart();
+            if(viewId === 'terrain' && !charts.terrain) initTerrainChart();
+            if(viewId === 'soil') renderSoilList('all');
+        }
+
+        // --- MODULE 1: LULC ---
+        function initLulcCharts() {
+            // Pie Chart
+            const ctxPie = document.getElementById('lulcPieChart').getContext('2d');
+            charts.lulcPie = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: appData.lulc.bikaner.labels,
+                    datasets: [{
+                        data: appData.lulc.bikaner.data,
+                        backgroundColor: ['#d6d3d1', '#f43f5e', '#10b981', '#fbbf24', '#60a5fa'], // Stone, Red, Green, Amber, Blue
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // Note: The comparison Bar Chart (lulcBarChart) was removed to make space for the map visualization.
+        }
+
+        function updateLulcData(district) {
+            currentLulcDistrict = district;
+            const data = appData.lulc[district];
+            const isBikaner = district === 'bikaner';
+            const districtName = isBikaner ? 'Bikaner' : 'Jodhpur';
+            
+            // UI Toggle
+            const btnBik = document.getElementById('btn-bikaner');
+            const btnJod = document.getElementById('btn-jodhpur');
+            
+            if (district === 'bikaner') {
+                btnBik.className = "px-6 py-2 rounded-full bg-stone-800 text-white shadow-md transition hover:bg-stone-700 font-medium";
+                btnJod.className = "px-6 py-2 rounded-full bg-white text-stone-600 border border-stone-200 shadow-sm transition hover:bg-stone-50 font-medium";
+            } else {
+                btnJod.className = "px-6 py-2 rounded-full bg-stone-800 text-white shadow-md transition hover:bg-stone-700 font-medium";
+                btnBik.className = "px-6 py-2 rounded-full bg-white text-stone-600 border border-stone-200 shadow-sm transition hover:bg-stone-50 font-medium";
+            }
+
+            // Update Text
+            document.getElementById('lulc-chart-title').innerText = `Composition: ${districtName}`;
+            document.getElementById('lulc-dominant-text').innerText = data.dominant;
+            document.getElementById('lulc-urban-text').innerText = data.urban;
+
+            // Update Map Placeholder
+            const mapPlaceholder = document.getElementById('lulc-map-placeholder');
+            const mapText = isBikaner ? 'Bikaner+LULC+Map+%282024%29' : 'Jodhpur+LULC+Map+%282024%29';
+            mapPlaceholder.src = `https://placehold.co/800x400/DCC7A4/333?text=${mapText}`;
+            mapPlaceholder.alt = `${districtName} LULC Map Placeholder`;
+            document.getElementById('lulc-map-title').innerText = `LULC Thematic Map: ${districtName} (2024)`;
+
+            // Update Pie Chart
+            charts.lulcPie.data.datasets[0].data = data.data;
+            charts.lulcPie.update();
+        }
+
+        // --- MODULE 2: SOIL ---
+        function renderSoilList(filterType) {
+            const container = document.getElementById('soil-list');
+            container.innerHTML = '';
+            
+            const filtered = filterType === 'all' 
+                ? appData.soil 
+                : appData.soil.filter(s => s.type === filterType);
+
+            filtered.forEach(soil => {
+                const el = document.createElement('div');
+                el.className = 'p-4 rounded-lg bg-stone-50 border border-stone-200 hover:border-amber-400 hover:bg-white cursor-pointer transition flex justify-between items-center group';
+                el.onclick = () => showSoilDetail(soil);
+                el.innerHTML = `
+                    <span class="font-medium text-stone-700 group-hover:text-amber-700">${soil.name}</span>
+                    <span class="text-xs px-2 py-1 rounded bg-stone-200 text-stone-500">${soil.type === 'fertile' ? 'Fertile' : 'Arid'}</span>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function filterSoil(type) {
+            renderSoilList(type);
+        }
+
+        function showSoilDetail(soil) {
+            document.getElementById('soil-detail-name').innerText = soil.name;
+            document.getElementById('soil-detail-desc').innerText = soil.desc;
+            document.getElementById('soil-detail-agri').innerText = soil.agri;
+            document.getElementById('soil-detail-tip').innerText = soil.tip;
+            
+            const bar = document.getElementById('soil-detail-bar');
+            if(soil.type === 'fertile') {
+                bar.className = 'h-1 w-20 bg-emerald-500 mb-6 rounded-full';
+            } else {
+                bar.className = 'h-1 w-20 bg-amber-500 mb-6 rounded-full';
+            }
+        }
+
+        // --- MODULE 3: NDVI ---
+        function initNdviChart() {
+            const ctx = document.getElementById('ndviTrendChart').getContext('2d');
+            charts.ndviTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+                    datasets: [
+                        {
+                            label: 'Urban Zone (Avg NDVI)',
+                            data: [0.35, 0.33, 0.30, 0.28, 0.25, 0.22, 0.20, 0.18, 0.17, 0.15],
+                            borderColor: '#f43f5e', // Rose
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Green Belt (Avg NDVI)',
+                            data: [0.45, 0.46, 0.48, 0.47, 0.49, 0.52, 0.55, 0.58, 0.60, 0.62],
+                            borderColor: '#10b981', // Emerald
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: { display: true, text: 'NDVI Value' },
+                            min: 0,
+                            max: 0.8
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateNdviYear(year) {
+            // UI State
+            [2015, 2020, 2024].forEach(y => {
+                const btn = document.getElementById(`btn-${y}`);
+                if (y === year) {
+                    btn.className = "w-full text-left px-4 py-3 rounded-lg border border-emerald-500 bg-emerald-50 text-emerald-900 font-bold shadow-sm transition";
+                } else {
+                    btn.className = "w-full text-left px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition";
+                }
+            });
+
+            // Update Text
+            document.getElementById('ndvi-observation').innerText = appData.ndvi[year];
+        }
+
+        // --- MODULE 4: TERRAIN ---
+        function initTerrainChart() {
+            const ctx = document.getElementById('terrainChart').getContext('2d');
+            
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(244, 63, 94, 0.5)'); // Red (High)
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.5)'); // Blue (Low)
+
+            charts.terrain = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 50}, (_, i) => i + 'km'), // 0km to 49km
+                    datasets: [{
+                        label: 'Elevation (m)',
+                        data: [
+                            200, 210, 225, 240, 260, 280, 275, 250, 230, 210, 
+                            200, 190, 180, 175, 170, 175, 180, 200, 220, 250,
+                            280, 310, 330, 340, 320, 290, 260, 240, 220, 200,
+                            180, 160, 150, 145, 150, 160, 180, 200, 230, 250,
+                            260, 270, 280, 270, 250, 230, 210, 200, 190, 180
+                        ],
+                        borderColor: '#4b5563',
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'nearest',
+                        intersect: false,
+                        axis: 'x'
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                footer: (tooltipItems) => {
+                                    const val = tooltipItems[0].raw;
+                                    if (val > 250) return "Risk: High (Rockfall/Cut Required)";
+                                    if (val < 180) return "Risk: Flood Plain/Drainage";
+                                    return "Risk: Moderate (Standard Construction)";
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: { display: true, text: 'Elevation (meters)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize First View
+        window.onload = function() {
+            // Initializing with the default view
+        };
+
+    </script>
+</body>
+</html>
